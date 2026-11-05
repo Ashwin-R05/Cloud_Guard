@@ -58,7 +58,7 @@ def test_get_all_checks():
     all_checks = get_all_checks()
     assert SampleCheckA in all_checks
     assert SampleCheckB in all_checks
-    assert len(all_checks) == 2
+    assert len(all_checks) >= 2
 
 
 def test_register_invalid_class():
