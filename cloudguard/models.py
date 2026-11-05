@@ -1,8 +1,8 @@
 """Data models and enums for CloudGuard findings and compliance state."""
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 
 class Severity(str, Enum):
@@ -60,3 +60,34 @@ class Finding:
         data["status"] = self.status.value if isinstance(self.status, FindingStatus) else str(self.status)
         return data
 
+
+@dataclass
+class ScanResult:
+    """Aggregated output of a CloudGuard assessment execution.
+
+    Attributes:
+        account_id: AWS account ID where the scan executed.
+        account_arn: Caller ARN used for the scan.
+        scan_timestamp: ISO-8601 formatted UTC timestamp when scan ran.
+        findings: Complete list of evaluated Finding objects (FAIL and SKIPPED).
+        severity_counts: Summary breakdown of findings by severity and status.
+        total_findings: Count of total findings evaluated.
+    """
+
+    account_id: str
+    account_arn: str
+    scan_timestamp: str
+    findings: List[Finding] = field(default_factory=list)
+    severity_counts: Dict[str, int] = field(default_factory=dict)
+    total_findings: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert scan result to a dictionary representation."""
+        return {
+            "account_id": self.account_id,
+            "account_arn": self.account_arn,
+            "scan_timestamp": self.scan_timestamp,
+            "severity_counts": self.severity_counts,
+            "total_findings": self.total_findings,
+            "findings": [f.to_dict() for f in self.findings],
+        }
