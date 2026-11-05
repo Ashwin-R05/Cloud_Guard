@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment variables, keys, and AWS credentials
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*credentials*
+.aws/
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Generated scan outputs and reports
+reports/
+*.report.html
+
+# Terraform state and local directories
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# IDE and OS specific
+.DS_Store
+.idea/
+.vscode/
+*.swp
+

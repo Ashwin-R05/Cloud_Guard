@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudGuard Security Assessment Report</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 2rem; color: #1f2937; background-color: #f9fafb; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h1 { color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; }
+        .badge { display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 4px; text-transform: uppercase; }
+        .badge-critical { background: #fee2e2; color: #991b1b; }
+        .badge-high { background: #ffedd5; color: #9a3412; }
+        .badge-medium { background: #fef3c7; color: #92400e; }
+        .badge-low { background: #e0f2fe; color: #075985; }
+        .badge-skipped { background: #f3f4f6; color: #4b5563; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
+        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
+        .remediation-box { font-family: monospace; font-size: 0.875rem; background: #f3f4f6; padding: 0.5rem; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ CloudGuard Security Assessment Report</h1>
+        <p><strong>Scan Timestamp:</strong> {{ metadata.timestamp | default('N/A') }}</p>
+        <p><strong>Account ID:</strong> {{ metadata.account_id | default('N/A') }}</p>
+
+        <h2>Findings Summary</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Severity</th>
+                    <th>CIS Control</th>
+                    <th>Title & Resource</th>
+                    <th>Remediation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for finding in findings %}
+                <tr>
+                    <td>
+                        <span class="badge {% if finding.status == 'SKIPPED' %}badge-skipped{% else %}badge-fail{% endif %}">
+                            {{ finding.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ finding.severity.lower() }}">
+                            {{ finding.severity }}
+                        </span>
+                    </td>
+                    <td>{{ finding.cis_reference }}</td>
+                    <td>
+                        <strong>{{ finding.title }}</strong><br>
+                        <small>{{ finding.resource_type }} ({{ finding.resource_id }}) [{{ finding.region }}]</small>
+                    </td>
+                    <td>
+                        <div class="remediation-box">{{ finding.remediation }}</div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5">No findings detected.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+
