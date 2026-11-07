@@ -73,6 +73,47 @@ class ReportGenerator:
         data["findings"] = sorted(data["findings"], key=lambda f: f.get("risk_score", 0.0), reverse=True)
         return json.dumps(data, indent=2)
 
+    @staticmethod
+    def load_from_dict(data: Dict[str, Any]) -> ScanResult:
+        """Parse a dictionary (e.g. from JSON report) into a ScanResult instance."""
+        from cloudguard.models import FindingStatus, Severity
+        findings = []
+        for f_data in data.get("findings", []):
+            finding = Finding(
+                id=f_data["id"],
+                check_id=f_data["check_id"],
+                title=f_data["title"],
+                description=f_data["description"],
+                resource_id=f_data["resource_id"],
+                resource_type=f_data["resource_type"],
+                region=f_data["region"],
+                severity=Severity(f_data["severity"]) if isinstance(f_data["severity"], str) else f_data["severity"],
+                risk_score=float(f_data.get("risk_score", 0.0)),
+                cis_reference=f_data["cis_reference"],
+                remediation=f_data["remediation"],
+                status=FindingStatus(f_data["status"]) if isinstance(f_data["status"], str) else f_data["status"],
+                impact=int(f_data.get("impact", 3)),
+                exposure=int(f_data.get("exposure", 3)),
+                exposure_reason=f_data.get("exposure_reason", "Standard baseline exposure"),
+            )
+            findings.append(finding)
+
+        return ScanResult(
+            account_id=str(data.get("account_id", "N/A")),
+            account_arn=str(data.get("account_arn", "N/A")),
+            scan_timestamp=str(data.get("scan_timestamp", "")),
+            findings=findings,
+            severity_counts=data.get("severity_counts", {}),
+            total_findings=int(data.get("total_findings", len(findings))),
+            posture_score=float(data.get("posture_score", 100.0)),
+        )
+
+    @classmethod
+    def load_from_json(cls, json_str: str) -> ScanResult:
+        """Parse a JSON string adhering to docs/schema.md into a ScanResult instance."""
+        data = json.loads(json_str)
+        return cls.load_from_dict(data)
+
     def save_html_report(self, result: ScanResult, output_path: Union[str, Path]) -> str:
         """Render and save HTML report to file."""
         html_content = self.render_html(result)

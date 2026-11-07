@@ -78,7 +78,22 @@ pytest
 python -m cloudguard.cli --profile my-readonly-profile --regions us-east-1
 ```
 
-### 4. Launch the Dashboard
+### 4. Launch the Interactive Streamlit Dashboard
 ```bash
 streamlit run dashboard/app.py
 ```
+
+The dashboard will open automatically in your browser at `http://localhost:8501`.
+
+#### Dashboard Features:
+1. **Live AWS Scan (Sidebar):** Enter an optional AWS named profile, choose target regions (multiselect), choose which checks to evaluate, and click **🚀 Run Security Scan**.
+2. **Offline JSON Analysis (Sidebar):** Upload any previously saved CloudGuard `.json` report via the file uploader to analyze results without active AWS credentials.
+3. **Executive Summary Cards:** Instant visibility into the overall **Posture Score (0-100)** and counts of Critical, High, Medium, and Low findings.
+4. **Visual Analytics:** Breakdown charts displaying findings distribution across severity tiers and CIS module domains (S3, IAM, Network, Data, Logging).
+5. **Interactive Findings Explorer:**
+   - Filter findings by **Severity**, **Module**, or **Region**.
+   - Perform real-time free-text search across finding titles, resource IDs, and CIS references.
+   - Sortable table powered by Pandas.
+6. **Detailed Findings & Remediation Inspector:** Select any finding to view the technical description, CIS benchmark control, **two-dimensional score breakdown** ($\text{Impact} \times \text{Exposure} = \text{Risk Score}$ with contextual rationale), and actionable remediation guidance.
+7. **Coverage Gaps & Skipped Evaluations:** Dedicated expandable section detailing any checks that were skipped due to AWS permission limitations (`AccessDenied`) with specific guidance on required IAM permissions.
+8. **Export Reports:** Direct one-click download buttons for both standalone **JSON** and self-contained **HTML** reports.
