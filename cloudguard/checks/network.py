@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 from cloudguard.checks.base import BaseCheck, is_permission_error
 from cloudguard.config import Config
 from cloudguard.models import Finding, FindingStatus, Severity
-from cloudguard.scoring import calculate_finding_score
+from cloudguard.scoring import calculate_risk
 
 
 def is_cidr_world_accessible(rule: Dict[str, Any]) -> bool:
@@ -85,6 +85,11 @@ class OpenManagementPortsCheck(BaseCheck):
 
                         if exposed_services:
                             services_str = ", ".join(exposed_services)
+                            risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                                self.base_severity,
+                                exposure=5,
+                                exposure_reason="Remote management ports (SSH/RDP) directly reachable from 0.0.0.0/0 or ::/0",
+                            )
                             findings.append(
                                 Finding(
                                     id=f"{self.check_id}-{region}-{sg_id}",
@@ -97,14 +102,17 @@ class OpenManagementPortsCheck(BaseCheck):
                                     resource_id=sg_id,
                                     resource_type="AWS::EC2::SecurityGroup",
                                     region=region,
-                                    severity=self.base_severity,
-                                    risk_score=calculate_finding_score(self.base_severity),
+                                    severity=effective_sev,
+                                    risk_score=risk_score,
                                     cis_reference=self.cis_reference,
                                     remediation=(
                                         f"Modify security group '{sg_id}' to remove 0.0.0.0/0 and ::/0 from "
                                         "inbound rules for ports 22 and 3389, and restrict access to authorized CIDR blocks."
                                     ),
                                     status=FindingStatus.FAIL,
+                                    impact=imp,
+                                    exposure=exp,
+                                    exposure_reason=reason,
                                 )
                             )
             except ClientError as exc:
@@ -168,6 +176,11 @@ class AllTrafficOpenCheck(BaseCheck):
                         allows_all = any(rule_covers_all_traffic(rule) for rule in ip_permissions)
 
                         if allows_all:
+                            risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                                self.base_severity,
+                                exposure=5,
+                                exposure_reason="All traffic (-1) open to the public internet (0.0.0.0/0 or ::/0)",
+                            )
                             findings.append(
                                 Finding(
                                     id=f"{self.check_id}-{region}-{sg_id}",
@@ -180,14 +193,17 @@ class AllTrafficOpenCheck(BaseCheck):
                                     resource_id=sg_id,
                                     resource_type="AWS::EC2::SecurityGroup",
                                     region=region,
-                                    severity=self.base_severity,
-                                    risk_score=calculate_finding_score(self.base_severity),
+                                    severity=effective_sev,
+                                    risk_score=risk_score,
                                     cis_reference=self.cis_reference,
                                     remediation=(
                                         f"Remove the all-traffic (-1) ingress rule from security group '{sg_id}' "
                                         "and specify only the explicitly required protocols, ports, and source CIDRs."
                                     ),
                                     status=FindingStatus.FAIL,
+                                    impact=imp,
+                                    exposure=exp,
+                                    exposure_reason=reason,
                                 )
                             )
             except ClientError as exc:

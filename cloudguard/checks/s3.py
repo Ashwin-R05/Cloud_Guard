@@ -6,7 +6,7 @@ import boto3
 from botocore.exceptions import ClientError
 from cloudguard.checks.base import BaseCheck, is_permission_error
 from cloudguard.models import Finding, FindingStatus, Severity
-from cloudguard.scoring import calculate_finding_score
+from cloudguard.scoring import calculate_risk
 
 ALL_USERS_URI = "http://acs.amazonaws.com/groups/global/AllUsers"
 AUTH_USERS_URI = "http://acs.amazonaws.com/groups/global/AuthenticatedUsers"
@@ -205,6 +205,11 @@ class S3PublicBucketCheck(BaseCheck):
 
             if public_reasons:
                 reasons_str = "; ".join(public_reasons)
+                risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                    self.base_severity,
+                    exposure=5,
+                    exposure_reason="Bucket allows public read/write to the internet (AllUsers or permissive policy)",
+                )
                 findings.append(
                     Finding(
                         id=f"{self.check_id}-{bucket_region}-{bucket_name}",
@@ -217,14 +222,17 @@ class S3PublicBucketCheck(BaseCheck):
                         resource_id=bucket_name,
                         resource_type="AWS::S3::Bucket",
                         region=bucket_region,
-                        severity=self.base_severity,
-                        risk_score=calculate_finding_score(self.base_severity),
+                        severity=effective_sev,
+                        risk_score=risk_score,
                         cis_reference=self.cis_reference,
                         remediation=(
                             "Enable S3 Block Public Access on the bucket and the account, and remove "
                             "public ACL grants or unrestricted policy statements."
                         ),
                         status=FindingStatus.FAIL,
+                        impact=imp,
+                        exposure=exp,
+                        exposure_reason=reason,
                     )
                 )
 
@@ -269,6 +277,11 @@ class S3DefaultEncryptionCheck(BaseCheck):
             except ClientError as exc:
                 code = exc.response.get("Error", {}).get("Code", "")
                 if code == "ServerSideEncryptionConfigurationNotFoundError":
+                    risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                        self.base_severity,
+                        exposure=3,
+                        exposure_reason="Storage encryption disabled at rest for internal object store",
+                    )
                     findings.append(
                         Finding(
                             id=f"{self.check_id}-{bucket_region}-{bucket_name}",
@@ -278,11 +291,14 @@ class S3DefaultEncryptionCheck(BaseCheck):
                             resource_id=bucket_name,
                             resource_type="AWS::S3::Bucket",
                             region=bucket_region,
-                            severity=self.base_severity,
-                            risk_score=calculate_finding_score(self.base_severity),
+                            severity=effective_sev,
+                            risk_score=risk_score,
                             cis_reference=self.cis_reference,
                             remediation="Enable default encryption for the S3 bucket using SSE-S3 or AWS KMS.",
                             status=FindingStatus.FAIL,
+                            impact=imp,
+                            exposure=exp,
+                            exposure_reason=reason,
                         )
                     )
                 elif is_permission_error(exc):
@@ -332,6 +348,11 @@ class S3VersioningCheck(BaseCheck):
                 status = ver_resp.get("Status")
                 if status != "Enabled":
                     current_status = status if status else "Disabled"
+                    risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                        self.base_severity,
+                        exposure=2,
+                        exposure_reason="Versioning disabled; object lifecycle and recovery risk without direct exposure",
+                    )
                     findings.append(
                         Finding(
                             id=f"{self.check_id}-{bucket_region}-{bucket_name}",
@@ -344,11 +365,14 @@ class S3VersioningCheck(BaseCheck):
                             resource_id=bucket_name,
                             resource_type="AWS::S3::Bucket",
                             region=bucket_region,
-                            severity=self.base_severity,
-                            risk_score=calculate_finding_score(self.base_severity),
+                            severity=effective_sev,
+                            risk_score=risk_score,
                             cis_reference=self.cis_reference,
                             remediation="Enable versioning on the S3 bucket to preserve and recover previous versions of objects.",
                             status=FindingStatus.FAIL,
+                            impact=imp,
+                            exposure=exp,
+                            exposure_reason=reason,
                         )
                     )
             except ClientError as exc:

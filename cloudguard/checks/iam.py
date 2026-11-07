@@ -8,7 +8,7 @@ import boto3
 from botocore.exceptions import ClientError
 from cloudguard.checks.base import BaseCheck, is_permission_error
 from cloudguard.models import Finding, FindingStatus, Severity
-from cloudguard.scoring import calculate_finding_score
+from cloudguard.scoring import calculate_finding_score, calculate_risk
 
 
 def parse_policy_document(doc: Any) -> Dict[str, Any]:
@@ -106,6 +106,11 @@ class IAMConsoleMfaCheck(BaseCheck):
                         raise
 
                     if not mfa_devices:
+                        risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                            self.base_severity,
+                            exposure=4,
+                            exposure_reason="Console password active without multi-factor authentication safeguard",
+                        )
                         findings.append(
                             Finding(
                                 id=f"{self.check_id}-{user_name}",
@@ -118,14 +123,17 @@ class IAMConsoleMfaCheck(BaseCheck):
                                 resource_id=user_name,
                                 resource_type="AWS::IAM::User",
                                 region="global",
-                                severity=self.base_severity,
-                                risk_score=calculate_finding_score(self.base_severity),
+                                severity=effective_sev,
+                                risk_score=risk_score,
                                 cis_reference=self.cis_reference,
                                 remediation=(
                                     f"Enable multi-factor authentication (MFA) for IAM user '{user_name}' "
                                     "or delete their login profile if console access is not required."
                                 ),
                                 status=FindingStatus.FAIL,
+                                impact=imp,
+                                exposure=exp,
+                                exposure_reason=reason,
                             )
                         )
         except ClientError as exc:
@@ -172,6 +180,11 @@ class IAMWildcardPolicyCheck(BaseCheck):
 
                         for stmt in statements:
                             if statement_allows_full_admin(stmt):
+                                risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                                    self.base_severity,
+                                    exposure=4,
+                                    exposure_reason="IAM policy grants unrestricted administrative permissions (*:*)",
+                                )
                                 findings.append(
                                     Finding(
                                         id=f"{self.check_id}-{policy_name}",
@@ -184,14 +197,17 @@ class IAMWildcardPolicyCheck(BaseCheck):
                                         resource_id=policy_name,
                                         resource_type="AWS::IAM::Policy",
                                         region="global",
-                                        severity=self.base_severity,
-                                        risk_score=calculate_finding_score(self.base_severity),
+                                        severity=effective_sev,
+                                        risk_score=risk_score,
                                         cis_reference=self.cis_reference,
                                         remediation=(
                                             f"Restrict policy '{policy_name}' by defining explicit allowed actions "
                                             "and specific resource ARNs, adhering to the principle of least privilege."
                                         ),
                                         status=FindingStatus.FAIL,
+                                        impact=imp,
+                                        exposure=exp,
+                                        exposure_reason=reason,
                                     )
                                 )
                                 break
@@ -223,6 +239,11 @@ class IAMWildcardPolicyCheck(BaseCheck):
                                     statements = [statements]
                                 for stmt in statements:
                                     if statement_allows_full_admin(stmt):
+                                        risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                                            self.base_severity,
+                                            exposure=4,
+                                            exposure_reason="Inline user policy grants unrestricted administrative privileges (*:*)",
+                                        )
                                         findings.append(
                                             Finding(
                                                 id=f"{self.check_id}-user-{user_name}-{pol_name}",
@@ -235,14 +256,17 @@ class IAMWildcardPolicyCheck(BaseCheck):
                                                 resource_id=f"{user_name}/{pol_name}",
                                                 resource_type="AWS::IAM::UserPolicy",
                                                 region="global",
-                                                severity=self.base_severity,
-                                                risk_score=calculate_finding_score(self.base_severity),
+                                                severity=effective_sev,
+                                                risk_score=risk_score,
                                                 cis_reference=self.cis_reference,
                                                 remediation=(
                                                     f"Remove or restrict inline policy '{pol_name}' on user '{user_name}' "
                                                     "and apply least-privilege permissions."
                                                 ),
                                                 status=FindingStatus.FAIL,
+                                                impact=imp,
+                                                exposure=exp,
+                                                exposure_reason=reason,
                                             )
                                         )
                                         break
@@ -272,6 +296,11 @@ class IAMWildcardPolicyCheck(BaseCheck):
                                     statements = [statements]
                                 for stmt in statements:
                                     if statement_allows_full_admin(stmt):
+                                        risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                                            self.base_severity,
+                                            exposure=4,
+                                            exposure_reason="Inline group policy grants unrestricted administrative privileges (*:*)",
+                                        )
                                         findings.append(
                                             Finding(
                                                 id=f"{self.check_id}-group-{group_name}-{pol_name}",
@@ -284,13 +313,16 @@ class IAMWildcardPolicyCheck(BaseCheck):
                                                 resource_id=f"{group_name}/{pol_name}",
                                                 resource_type="AWS::IAM::GroupPolicy",
                                                 region="global",
-                                                severity=self.base_severity,
-                                                risk_score=calculate_finding_score(self.base_severity),
+                                                severity=effective_sev,
+                                                risk_score=risk_score,
                                                 cis_reference=self.cis_reference,
                                                 remediation=(
                                                     f"Remove or restrict inline policy '{pol_name}' on group '{group_name}'."
                                                 ),
                                                 status=FindingStatus.FAIL,
+                                                impact=imp,
+                                                exposure=exp,
+                                                exposure_reason=reason,
                                             )
                                         )
                                         break
@@ -324,6 +356,11 @@ class IAMWildcardPolicyCheck(BaseCheck):
                                     statements = [statements]
                                 for stmt in statements:
                                     if statement_allows_full_admin(stmt):
+                                        risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                                            self.base_severity,
+                                            exposure=4,
+                                            exposure_reason="Inline role policy grants unrestricted administrative privileges (*:*)",
+                                        )
                                         findings.append(
                                             Finding(
                                                 id=f"{self.check_id}-role-{role_name}-{pol_name}",
@@ -336,13 +373,16 @@ class IAMWildcardPolicyCheck(BaseCheck):
                                                 resource_id=f"{role_name}/{pol_name}",
                                                 resource_type="AWS::IAM::RolePolicy",
                                                 region="global",
-                                                severity=self.base_severity,
-                                                risk_score=calculate_finding_score(self.base_severity),
+                                                severity=effective_sev,
+                                                risk_score=risk_score,
                                                 cis_reference=self.cis_reference,
                                                 remediation=(
                                                     f"Remove or restrict inline policy '{pol_name}' on role '{role_name}'."
                                                 ),
                                                 status=FindingStatus.FAIL,
+                                                impact=imp,
+                                                exposure=exp,
+                                                exposure_reason=reason,
                                             )
                                         )
                                         break
@@ -417,6 +457,11 @@ class IAMStaleAccessKeysCheck(BaseCheck):
 
                                 if reasons:
                                     reasons_msg = "; ".join(reasons)
+                                    risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                                        self.base_severity,
+                                        exposure=3,
+                                        exposure_reason="Programmatic access key active beyond recommended 90-day rotation interval",
+                                    )
                                     findings.append(
                                         Finding(
                                             id=f"{self.check_id}-{user_name}-{key_id}",
@@ -429,14 +474,17 @@ class IAMStaleAccessKeysCheck(BaseCheck):
                                             resource_id=f"{user_name}/{key_id}",
                                             resource_type="AWS::IAM::AccessKey",
                                             region="global",
-                                            severity=self.base_severity,
-                                            risk_score=calculate_finding_score(self.base_severity),
+                                            severity=effective_sev,
+                                            risk_score=risk_score,
                                             cis_reference=self.cis_reference,
                                             remediation=(
                                                 f"Rotate access key '{key_id}' for IAM user '{user_name}' or "
                                                 "deactivate and delete the key if no longer required."
                                             ),
                                             status=FindingStatus.FAIL,
+                                            impact=imp,
+                                            exposure=exp,
+                                            exposure_reason=reason,
                                         )
                                     )
                     except ClientError as exc:
@@ -472,6 +520,11 @@ class IAMRootAccessKeysCheck(BaseCheck):
             keys_present = summary_map.get("AccountAccessKeysPresent", 0)
 
             if keys_present > 0:
+                risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                    self.base_severity,
+                    exposure=5,
+                    exposure_reason="Root account credentials active with irrevocable administrative account privileges",
+                )
                 findings.append(
                     Finding(
                         id=f"{self.check_id}-root",
@@ -484,14 +537,17 @@ class IAMRootAccessKeysCheck(BaseCheck):
                         resource_id="root",
                         resource_type="AWS::IAM::Root",
                         region="global",
-                        severity=self.base_severity,
-                        risk_score=calculate_finding_score(self.base_severity),
+                        severity=effective_sev,
+                        risk_score=risk_score,
                         cis_reference=self.cis_reference,
                         remediation=(
                             "Delete all root account access keys immediately via the AWS Management Console "
                             "and create scoped IAM users or roles with temporary credentials."
                         ),
                         status=FindingStatus.FAIL,
+                        impact=imp,
+                        exposure=exp,
+                        exposure_reason=reason,
                     )
                 )
         except ClientError as exc:

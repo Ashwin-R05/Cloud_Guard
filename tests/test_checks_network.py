@@ -87,7 +87,10 @@ def test_net_01_open_ssh_flagged():
     f = findings[0]
     assert f.check_id == "NET-01"
     assert f.status == FindingStatus.FAIL
-    assert f.severity == Severity.HIGH
+    assert f.severity == Severity.CRITICAL
+    assert f.risk_score == 20.0
+    assert f.exposure == 5
+    assert f.impact == 4
     assert f.resource_id == sg_id
     assert "SSH (port 22)" in f.description
 

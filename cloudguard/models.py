@@ -34,10 +34,13 @@ class Finding:
         resource_type: Resource category (e.g., 'AWS::S3::Bucket', 'AWS::IAM::User').
         region: AWS region where the resource resides or 'global'.
         severity: Severity level (CRITICAL, HIGH, MEDIUM, LOW).
-        risk_score: Normalized numerical risk score (0.0 to 10.0).
+        risk_score: Normalized numerical risk score (1.0 to 25.0, or 0.0 for SKIPPED).
         cis_reference: Associated CIS control title and/or reference marker.
         remediation: Actionable guidance on how to fix or mitigate the finding.
         status: Finding outcome status, strictly FAIL or SKIPPED.
+        impact: Impact score on 1-5 scale.
+        exposure: Exposure score on 1-5 scale.
+        exposure_reason: Contextual justification for the assigned exposure score.
     """
 
     id: str
@@ -52,12 +55,18 @@ class Finding:
     cis_reference: str
     remediation: str
     status: FindingStatus = FindingStatus.FAIL
+    impact: int = 3
+    exposure: int = 3
+    exposure_reason: str = "Standard baseline exposure"
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert finding instance to a dictionary representation."""
         data = asdict(self)
         data["severity"] = self.severity.value if isinstance(self.severity, Severity) else str(self.severity)
         data["status"] = self.status.value if isinstance(self.status, FindingStatus) else str(self.status)
+        data["impact"] = self.impact
+        data["exposure"] = self.exposure
+        data["exposure_reason"] = self.exposure_reason
         return data
 
 
@@ -72,6 +81,7 @@ class ScanResult:
         findings: Complete list of evaluated Finding objects (FAIL and SKIPPED).
         severity_counts: Summary breakdown of findings by severity and status.
         total_findings: Count of total findings evaluated.
+        posture_score: Account-level security posture score from 0.0 to 100.0.
     """
 
     account_id: str
@@ -80,6 +90,7 @@ class ScanResult:
     findings: List[Finding] = field(default_factory=list)
     severity_counts: Dict[str, int] = field(default_factory=dict)
     total_findings: int = 0
+    posture_score: float = 100.0
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert scan result to a dictionary representation."""
@@ -89,5 +100,6 @@ class ScanResult:
             "scan_timestamp": self.scan_timestamp,
             "severity_counts": self.severity_counts,
             "total_findings": self.total_findings,
+            "posture_score": self.posture_score,
             "findings": [f.to_dict() for f in self.findings],
         }

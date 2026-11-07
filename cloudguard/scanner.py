@@ -12,6 +12,7 @@ from cloudguard.checks.base import BaseCheck, is_permission_error
 from cloudguard.checks.registry import discover_checks, get_all_checks
 from cloudguard.config import Config
 from cloudguard.models import Finding, FindingStatus, ScanResult, Severity
+from cloudguard.scoring import calculate_posture_score
 from cloudguard.session import get_session, verify_identity
 
 
@@ -94,6 +95,8 @@ class Scanner:
                 sev_key = f.severity.value if isinstance(f.severity, Severity) else str(f.severity)
                 severity_counts[sev_key] = severity_counts.get(sev_key, 0) + 1
 
+        posture_score = calculate_posture_score(findings)
+
         return ScanResult(
             account_id=account_id,
             account_arn=caller_arn,
@@ -101,6 +104,7 @@ class Scanner:
             findings=findings,
             severity_counts=severity_counts,
             total_findings=len(findings),
+            posture_score=posture_score,
         )
 
 

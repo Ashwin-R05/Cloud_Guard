@@ -5,7 +5,7 @@ import boto3
 from botocore.exceptions import ClientError
 from cloudguard.checks.base import BaseCheck, is_permission_error
 from cloudguard.models import Finding, FindingStatus, Severity
-from cloudguard.scoring import calculate_finding_score
+from cloudguard.scoring import calculate_risk
 
 
 def get_account_id(session: boto3.Session) -> str:
@@ -65,6 +65,11 @@ class CloudTrailLoggingCheck(BaseCheck):
                 raise
 
         if not has_active_multi_region_trail:
+            risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                self.base_severity,
+                exposure=4,
+                exposure_reason="Audit trail gaps; account-wide activity unlogged across AWS regions",
+            )
             return [
                 Finding(
                     id=f"{self.check_id}-{account_id}",
@@ -78,14 +83,17 @@ class CloudTrailLoggingCheck(BaseCheck):
                     resource_id=account_id,
                     resource_type="AWS::CloudTrail::Trail",
                     region="global",
-                    severity=self.base_severity,
-                    risk_score=calculate_finding_score(self.base_severity),
+                    severity=effective_sev,
+                    risk_score=risk_score,
                     cis_reference=self.cis_reference,
                     remediation=(
                         "Create a CloudTrail trail with 'IsMultiRegionTrail' enabled, start logging, and configure "
                         "a secure S3 bucket with access logging and KMS encryption to store trail events."
                     ),
                     status=FindingStatus.FAIL,
+                    impact=imp,
+                    exposure=exp,
+                    exposure_reason=reason,
                 )
             ]
 

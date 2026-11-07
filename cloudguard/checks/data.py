@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 from cloudguard.checks.base import BaseCheck, is_permission_error
 from cloudguard.config import Config
 from cloudguard.models import Finding, FindingStatus, Severity
-from cloudguard.scoring import calculate_finding_score
+from cloudguard.scoring import calculate_risk
 
 
 class UnencryptedEBSVolumeCheck(BaseCheck):
@@ -33,6 +33,11 @@ class UnencryptedEBSVolumeCheck(BaseCheck):
                         is_encrypted = volume.get("Encrypted", False)
 
                         if not is_encrypted:
+                            risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                                self.base_severity,
+                                exposure=3,
+                                exposure_reason="EBS persistent block storage volume unencrypted at rest",
+                            )
                             findings.append(
                                 Finding(
                                     id=f"{self.check_id}-{region}-{volume_id}",
@@ -45,14 +50,17 @@ class UnencryptedEBSVolumeCheck(BaseCheck):
                                     resource_id=volume_id,
                                     resource_type="AWS::EC2::Volume",
                                     region=region,
-                                    severity=self.base_severity,
-                                    risk_score=calculate_finding_score(self.base_severity),
+                                    severity=effective_sev,
+                                    risk_score=risk_score,
                                     cis_reference=self.cis_reference,
                                     remediation=(
                                         f"Encrypt EBS volume '{volume_id}' by creating a snapshot, copying the snapshot "
                                         "with AWS KMS encryption enabled, and creating a new encrypted volume."
                                     ),
                                     status=FindingStatus.FAIL,
+                                    impact=imp,
+                                    exposure=exp,
+                                    exposure_reason=reason,
                                 )
                             )
             except ClientError as exc:
@@ -115,6 +123,11 @@ class RDSInstanceSecurityCheck(BaseCheck):
 
                         # Condition 1: Storage encryption disabled
                         if not storage_encrypted:
+                            risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                                self.base_severity,
+                                exposure=3,
+                                exposure_reason="RDS relational database storage unencrypted at rest",
+                            )
                             findings.append(
                                 Finding(
                                     id=f"{self.check_id}-{region}-{db_id}-unencrypted",
@@ -127,19 +140,27 @@ class RDSInstanceSecurityCheck(BaseCheck):
                                     resource_id=db_id,
                                     resource_type="AWS::RDS::DBInstance",
                                     region=region,
-                                    severity=self.base_severity,
-                                    risk_score=calculate_finding_score(self.base_severity),
+                                    severity=effective_sev,
+                                    risk_score=risk_score,
                                     cis_reference=self.cis_reference,
                                     remediation=(
                                         f"Enable encryption for RDS instance '{db_id}' by taking a DB snapshot, "
                                         "copying the snapshot with encryption enabled, and restoring from the encrypted snapshot."
                                     ),
                                     status=FindingStatus.FAIL,
+                                    impact=imp,
+                                    exposure=exp,
+                                    exposure_reason=reason,
                                 )
                             )
 
                         # Condition 2: Public accessibility enabled
                         if publicly_accessible:
+                            risk_score, effective_sev, imp, exp, reason = calculate_risk(
+                                self.base_severity,
+                                exposure=5,
+                                exposure_reason="RDS database endpoint directly reachable from public internet",
+                            )
                             findings.append(
                                 Finding(
                                     id=f"{self.check_id}-{region}-{db_id}-public",
@@ -152,14 +173,17 @@ class RDSInstanceSecurityCheck(BaseCheck):
                                     resource_id=db_id,
                                     resource_type="AWS::RDS::DBInstance",
                                     region=region,
-                                    severity=self.base_severity,
-                                    risk_score=calculate_finding_score(self.base_severity),
+                                    severity=effective_sev,
+                                    risk_score=risk_score,
                                     cis_reference=self.cis_reference,
                                     remediation=(
                                         f"Modify RDS instance '{db_id}' to set PubliclyAccessible to False and place it "
                                         "within isolated private subnets accessible only via application security groups."
                                     ),
                                     status=FindingStatus.FAIL,
+                                    impact=imp,
+                                    exposure=exp,
+                                    exposure_reason=reason,
                                 )
                             )
             except ClientError as exc:
