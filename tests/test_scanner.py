@@ -68,7 +68,7 @@ def test_scanner_executes_checks_and_compiles_results():
     session = boto3.Session(region_name="us-east-1")
     scanner = Scanner(session=session, regions=["us-east-1"])
 
-    result = scanner.scan()
+    result = scanner.scan(check_ids=["MOCK_FAIL_CHECK"])
 
     assert result.account_id is not None
     assert len(result.account_id) == 12
@@ -85,7 +85,7 @@ def test_scanner_handles_access_denied_gracefully():
     session = boto3.Session(region_name="us-east-1")
     scanner = Scanner(session=session, regions=["us-east-1"])
 
-    result = scanner.scan()
+    result = scanner.scan(check_ids=["MOCK_DENIED_CHECK"])
 
     assert result.total_findings == 1
     finding = result.findings[0]
