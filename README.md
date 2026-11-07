@@ -97,3 +97,35 @@ The dashboard will open automatically in your browser at `http://localhost:8501`
 6. **Detailed Findings & Remediation Inspector:** Select any finding to view the technical description, CIS benchmark control, **two-dimensional score breakdown** ($\text{Impact} \times \text{Exposure} = \text{Risk Score}$ with contextual rationale), and actionable remediation guidance.
 7. **Coverage Gaps & Skipped Evaluations:** Dedicated expandable section detailing any checks that were skipped due to AWS permission limitations (`AccessDenied`) with specific guidance on required IAM permissions.
 8. **Export Reports:** Direct one-click download buttons for both standalone **JSON** and self-contained **HTML** reports.
+
+---
+
+## Controlled Testbed & Empirical Evaluation
+
+To measure detection accuracy without impacting production workloads, CloudGuard includes isolated testbed provisioning scripts and an empirical evaluation engine:
+
+### 1. Provision Vulnerable Testbed (Personal Sandbox Account Only)
+```bash
+python testbed/create_vulnerable.py --region us-east-1
+```
+Creates uniquely prefixed (`cloudguard-test-<uuid>`) test resources and records their identifiers in `testbed/manifest.json`.
+
+### 2. Measure Detection Accuracy
+```bash
+# Pre-remediation scan
+python -m cloudguard.cli --regions us-east-1 --output-dir evaluation/scans --format json
+
+# Evaluate detection recall and false positive rate
+python evaluation/evaluate.py \
+    --manifest testbed/manifest.json \
+    --before evaluation/scans/scan_pre.json \
+    --after evaluation/scans/scan_post.json \
+    --output evaluation/results.md
+```
+
+### 3. Safely Teardown Testbed
+```bash
+python testbed/destroy_vulnerable.py --manifest testbed/manifest.json
+```
+Idempotent teardown that empties buckets, detaches policies, and deletes only resources explicitly recorded in the manifest.
+
