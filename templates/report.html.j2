@@ -3,70 +3,398 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CloudGuard Security Assessment Report</title>
+    <title>CloudGuard Security Assessment Report - {{ result.account_id }}</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 2rem; color: #1f2937; background-color: #f9fafb; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        h1 { color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; }
-        .badge { display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 4px; text-transform: uppercase; }
-        .badge-critical { background: #fee2e2; color: #991b1b; }
-        .badge-high { background: #ffedd5; color: #9a3412; }
-        .badge-medium { background: #fef3c7; color: #92400e; }
-        .badge-low { background: #e0f2fe; color: #075985; }
-        .badge-skipped { background: #f3f4f6; color: #4b5563; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
-        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #e5e7eb; }
-        th { background: #f9fafb; font-weight: 600; }
-        .remediation-box { font-family: monospace; font-size: 0.875rem; background: #f3f4f6; padding: 0.5rem; border-radius: 4px; }
+        :root {
+            --bg-canvas: #f8fafc;
+            --bg-card: #ffffff;
+            --border-subtle: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --crit-bg: #fef2f2;
+            --crit-border: #fecaca;
+            --crit-text: #991b1b;
+            --high-bg: #fff7ed;
+            --high-border: #fed7aa;
+            --high-text: #9a3412;
+            --med-bg: #fefce8;
+            --med-border: #fef08a;
+            --med-text: #854d0e;
+            --low-bg: #f0fdf4;
+            --low-border: #bbf7d0;
+            --low-text: #166534;
+            --skip-bg: #f1f5f9;
+            --skip-border: #cbd5e1;
+            --skip-text: #475569;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-canvas);
+            color: var(--text-primary);
+            line-height: 1.5;
+            padding: 2.5rem 1.5rem;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .report-header {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+        .header-subtitle {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .meta-item {
+            font-size: 0.875rem;
+        }
+        .meta-label {
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        .meta-value {
+            font-weight: 500;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        /* Summary Stats Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 1.25rem;
+            text-align: center;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+        .stat-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .posture-card {
+            border-left: 4px solid #2563eb;
+        }
+        .card-crit { border-left: 4px solid #dc2626; }
+        .card-high { border-left: 4px solid #ea580c; }
+        .card-med { border-left: 4px solid #ca8a04; }
+        .card-low { border-left: 4px solid #16a34a; }
+        .card-skip { border-left: 4px solid #64748b; }
+
+        /* Findings Section */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .section-desc {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        /* Findings Table */
+        .table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.875rem;
+        }
+        thead {
+            background-color: #f1f5f9;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        th {
+            padding: 0.875rem 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        tbody tr {
+            border-bottom: 1px solid var(--border-subtle);
+            vertical-align: top;
+        }
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+        tbody tr:hover {
+            background-color: #f8fafc;
+        }
+        td {
+            padding: 1rem;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            white-space: nowrap;
+        }
+        .badge-critical { background: var(--crit-bg); color: var(--crit-text); border: 1px solid var(--crit-border); }
+        .badge-high { background: var(--high-bg); color: var(--high-text); border: 1px solid var(--high-border); }
+        .badge-medium { background: var(--med-bg); color: var(--med-text); border: 1px solid var(--med-border); }
+        .badge-low { background: var(--low-bg); color: var(--low-text); border: 1px solid var(--low-border); }
+        .badge-skipped { background: var(--skip-bg); color: var(--skip-text); border: 1px solid var(--skip-border); }
+        .badge-fail { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+        .score-pill {
+            display: inline-block;
+            background: #e2e8f0;
+            color: #1e293b;
+            font-weight: 700;
+            padding: 0.2rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+        }
+
+        /* Content Blocks */
+        .finding-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+        .finding-resource {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+        .finding-desc {
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .score-box {
+            background: #f8fafc;
+            border: 1px dashed var(--border-subtle);
+            border-radius: 4px;
+            padding: 0.5rem 0.75rem;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+        }
+        .score-math {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .score-reason {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        .remediation-box {
+            background: #f8fafc;
+            border-left: 3px solid #3b82f6;
+            padding: 0.6rem 0.75rem;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.825rem;
+            color: #1e3a8a;
+        }
+        .cis-badge {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: #f1f5f9;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-subtle);
+            display: inline-block;
+            margin-bottom: 0.5rem;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2.5rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🛡️ CloudGuard Security Assessment Report</h1>
-        <p><strong>Scan Timestamp:</strong> {{ metadata.timestamp | default('N/A') }}</p>
-        <p><strong>Account ID:</strong> {{ metadata.account_id | default('N/A') }}</p>
+        <!-- Report Header -->
+        <header class="report-header">
+            <div class="header-title">
+                🛡️ CloudGuard Security Assessment Report
+            </div>
+            <div class="header-subtitle">
+                CIS AWS Foundations Benchmark Compliance & Risk Audit
+            </div>
+            <div class="meta-grid">
+                <div class="meta-item">
+                    <div class="meta-label">Target AWS Account</div>
+                    <div class="meta-value">{{ result.account_id }}</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Evaluation Timestamp</div>
+                    <div class="meta-value">{{ result.scan_timestamp }}</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Assessment Scope</div>
+                    <div class="meta-value">{{ result.total_findings }} checks evaluated</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Execution ARN</div>
+                    <div class="meta-value">{{ result.account_arn }}</div>
+                </div>
+            </div>
+        </header>
 
-        <h2>Findings Summary</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Status</th>
-                    <th>Severity</th>
-                    <th>CIS Control</th>
-                    <th>Title & Resource</th>
-                    <th>Remediation</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for finding in findings %}
-                <tr>
-                    <td>
-                        <span class="badge {% if finding.status == 'SKIPPED' %}badge-skipped{% else %}badge-fail{% endif %}">
-                            {{ finding.status }}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="badge badge-{{ finding.severity.lower() }}">
-                            {{ finding.severity }}
-                        </span>
-                    </td>
-                    <td>{{ finding.cis_reference }}</td>
-                    <td>
-                        <strong>{{ finding.title }}</strong><br>
-                        <small>{{ finding.resource_type }} ({{ finding.resource_id }}) [{{ finding.region }}]</small>
-                    </td>
-                    <td>
-                        <div class="remediation-box">{{ finding.remediation }}</div>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="5">No findings detected.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <!-- Executive Summary Cards -->
+        <section class="summary-grid">
+            <div class="stat-card posture-card">
+                <div class="stat-title">Posture Score</div>
+                <div class="stat-number">{{ result.posture_score }}<span style="font-size: 1rem; color: var(--text-muted);">/100</span></div>
+            </div>
+            <div class="stat-card card-crit">
+                <div class="stat-title">Critical</div>
+                <div class="stat-number">{{ result.severity_counts.get('CRITICAL', 0) }}</div>
+            </div>
+            <div class="stat-card card-high">
+                <div class="stat-title">High</div>
+                <div class="stat-number">{{ result.severity_counts.get('HIGH', 0) }}</div>
+            </div>
+            <div class="stat-card card-med">
+                <div class="stat-title">Medium</div>
+                <div class="stat-number">{{ result.severity_counts.get('MEDIUM', 0) }}</div>
+            </div>
+            <div class="stat-card card-low">
+                <div class="stat-title">Low</div>
+                <div class="stat-number">{{ result.severity_counts.get('LOW', 0) }}</div>
+            </div>
+            <div class="stat-card card-skip">
+                <div class="stat-title">Skipped</div>
+                <div class="stat-number">{{ result.severity_counts.get('SKIPPED', 0) }}</div>
+            </div>
+        </section>
+
+        <!-- Findings Table -->
+        <section>
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Evaluation Findings</h2>
+                    <p class="section-desc">Sorted by risk score (Impact &times; Exposure)</p>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 110px;">Status</th>
+                            <th style="width: 120px;">Severity</th>
+                            <th style="width: 90px;">Risk Score</th>
+                            <th>Check & Resource Information</th>
+                            <th style="width: 35%;">Analysis & Remediation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for finding in result.findings %}
+                        <tr>
+                            <td>
+                                <span class="badge {% if finding.status == 'SKIPPED' %}badge-skipped{% else %}badge-fail{% endif %}">
+                                    {{ finding.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge badge-{{ finding.severity.lower() }}">
+                                    {{ finding.severity }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="score-pill">{{ finding.risk_score }}</span>
+                            </td>
+                            <td>
+                                <div class="cis-badge">{{ finding.cis_reference }}</div>
+                                <div class="finding-title">[{{ finding.check_id }}] {{ finding.title }}</div>
+                                <div class="finding-resource">{{ finding.resource_type }} &bull; {{ finding.resource_id }} ({{ finding.region }})</div>
+                                <div class="finding-desc">{{ finding.description }}</div>
+                            </td>
+                            <td>
+                                <div class="remediation-box">
+                                    <strong>Remediation:</strong> {{ finding.remediation }}
+                                </div>
+                                <div class="score-box">
+                                    <span class="score-math">Impact: {{ finding.impact }} &times; Exposure: {{ finding.exposure }} = Score: {{ finding.risk_score }}</span><br>
+                                    <span class="score-reason">{{ finding.exposure_reason }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                No misconfigurations identified. All evaluated checks passed!
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <footer class="footer">
+            CloudGuard Read-Only AWS Misconfiguration Scanner &bull; Generated without remote asset requests
+        </footer>
     </div>
 </body>
 </html>
-
