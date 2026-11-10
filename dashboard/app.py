@@ -1,5 +1,14 @@
 """Streamlit interactive dashboard for CloudGuard AWS security posture assessment."""
 
+import os
+from pathlib import Path
+import sys
+
+# Ensure project root is in sys.path when running via 'streamlit run dashboard/app.py'
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from datetime import datetime
 import json
 from typing import Any, Dict, List, Optional
